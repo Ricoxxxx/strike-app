@@ -3,8 +3,10 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
+let mainWindow;
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -18,7 +20,7 @@ function createWindow() {
     },
   });
 
-  win.loadFile('license-activation.html');
+  mainWindow.loadFile('license-activation.html');
 }
 
 app.whenReady().then(() => {
@@ -27,9 +29,6 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 
-  // Check GitHub for a newer published release. If one exists, it
-  // downloads in the background and installs automatically the next
-  // time the app is closed and reopened.
   autoUpdater.checkForUpdatesAndNotify();
 });
 
@@ -37,7 +36,44 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// ---- Real filesystem access (kept from earlier, unrelated to updates) ----
+// ---- Auto-updater logging — every stage now actually reports what's
+// happening, both to the terminal and to the app's own DevTools console,
+// instead of failing/succeeding silently with nothing to look at. ----
+
+function logToApp(msg) {
+  console.log(msg);
+  if (mainWindow) {
+    mainWindow.webContents.executeJavaScript(
+      `console.log(${JSON.stringify('[updater] ' + msg)})`
+    ).catch(() => {});
+  }
+}
+
+autoUpdater.on('checking-for-update', () => {
+  logToApp('Checking for update…');
+});
+
+autoUpdater.on('update-available', (info) => {
+  logToApp('Update available: v' + info.version + ' — downloading now.');
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  logToApp('No update available. Current app is already the latest (v' + app.getVersion() + ').');
+});
+
+autoUpdater.on('error', (err) => {
+  logToApp('Auto-update ERROR: ' + err.message);
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  logToApp('Downloading update: ' + Math.round(progress.percent) + '%');
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  logToApp('Update v' + info.version + ' downloaded — will install on next restart.');
+});
+
+// ---- Real filesystem access (unrelated to updates) ----
 
 ipcMain.handle('list-xml-files', async (event, folderPath) => {
   try {
