@@ -7,6 +7,7 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    title: 'STRIKE TimeCycle Editor',
     width: 1200,
     height: 800,
     minWidth: 900,
