@@ -2155,50 +2155,38 @@ async function validateKey(normalized){
     clearStates();
   });
 
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     if (btn.classList.contains('loading')) return;
 
-    if (input.value.trim().length === 0) {
-      triggerError();
+    const normalized = input.value.replace(/[^A-Z0-9]/g, '');
+    if (!normalized) {
       input.focus();
+      triggerError('Enter a license key.');
       return;
     }
 
     clearStates();
     btn.classList.add('loading');
 
-    setTimeout(() => {
-      const normalized = input.value.replace(/[^A-Z0-9]/g, '');
-      btn.addEventListener('click', async () => {
-  const normalized = input.value.replace(/[^A-Z0-9]/g, '');
-  if (!normalized) {
-    input.focus();
-    triggerError('Enter a license key.');
-    return;
-  }
+    const result = await validateKey(normalized);
 
-  btn.classList.add('loading');
-  clearStates();
+    btn.classList.remove('loading');
 
-  const result = await validateKey(normalized);
-
-  btn.classList.remove('loading');
-
-  if (result.ok) {
-    input.classList.add('success');
-    btn.classList.add('success');
-    btn.textContent = '✓ Activated';
-    setTimeout(goToMenu, 750);
-  } else if (result.reason === 'expired') {
-    triggerError('This key has expired.');
-  } else if (result.reason === 'revoked') {
-    triggerError('This key has been revoked.');
-  } else if (result.reason === 'network') {
-    triggerError(result.message);
-  } else {
-    triggerError();
-  }
-});
+    if (result.ok) {
+      input.classList.add('success');
+      btn.classList.add('success');
+      btn.textContent = '✓ Activated';
+      setTimeout(goToMenu, 750);
+    } else if (result.reason === 'expired') {
+      triggerError('This key has expired.');
+    } else if (result.reason === 'revoked') {
+      triggerError('This key has been revoked.');
+    } else if (result.reason === 'network') {
+      triggerError(result.message);
+    } else {
+      triggerError();
+    }
+  });
 
   function goToMenu(){
     const activateScreen = document.getElementById('activateScreen');
@@ -2565,13 +2553,14 @@ async function validateKey(normalized){
     if (e.key === 'Escape' && !unsavedOverlay.hidden) closeUnsavedDialog();
   });
 
-  function triggerError(){
+  function triggerError(message){
     card.classList.remove('shake');
     void card.offsetWidth;
     card.classList.add('shake');
 
     input.classList.add('error');
     label.classList.add('error');
+    errorMsg.textContent = message || 'Invalid license key';
     errorMsg.classList.add('show');
     btn.classList.remove('loading');
     btn.classList.add('error');
