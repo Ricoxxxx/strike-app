@@ -1,1 +1,9 @@
-7VXL-48XY-MGKS-2PG3
+{
+  "keys": {
+    "7VXL-48XY-MGKS-2PG3": {
+      "expires": 1785028465072,
+      "revoked": false,
+      "note": "tester 1"
+    }
+  }
+}
