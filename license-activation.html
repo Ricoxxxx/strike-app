@@ -2120,7 +2120,25 @@
   const errorMsg = document.getElementById('errorMsg');
   const btn = document.getElementById('activateBtn');
 
-  const VALID_KEY = 'TEMP30DXK9FQR7Z';
+  const KEYS_URL = 'https://raw.githubusercontent.com/Ricoxxxx/strike-app/master/keys.json';
+
+async function validateKey(normalized){
+  let data;
+  try {
+    const res = await fetch(KEYS_URL + '?t=' + Date.now());
+    data = await res.json();
+  } catch (err) {
+    return { ok:false, reason:'network', message:'Couldn\'t reach the key server — check your internet connection.' };
+  }
+
+  const formatted = normalized.match(/.{1,4}/g) ? normalized.match(/.{1,4}/g).join('-') : normalized;
+  const entry = data.keys && data.keys[formatted];
+
+  if (!entry) return { ok:false, reason:'invalid' };
+  if (entry.revoked) return { ok:false, reason:'revoked' };
+  if (Date.now() > entry.expires) return { ok:false, reason:'expired' };
+  return { ok:true };
+}
 
   function clearStates(){
     card.classList.remove('shake');
@@ -2151,18 +2169,36 @@
 
     setTimeout(() => {
       const normalized = input.value.replace(/[^A-Z0-9]/g, '');
-      btn.classList.remove('loading');
+      btn.addEventListener('click', async () => {
+  const normalized = input.value.replace(/[^A-Z0-9]/g, '');
+  if (!normalized) {
+    input.focus();
+    triggerError('Enter a license key.');
+    return;
+  }
 
-      if (normalized === VALID_KEY) {
-        input.classList.add('success');
-        btn.classList.add('success');
-        btn.textContent = '✓ Activated';
-        setTimeout(goToMenu, 750);
-      } else {
-        triggerError();
-      }
-    }, 900);
-  });
+  btn.classList.add('loading');
+  clearStates();
+
+  const result = await validateKey(normalized);
+
+  btn.classList.remove('loading');
+
+  if (result.ok) {
+    input.classList.add('success');
+    btn.classList.add('success');
+    btn.textContent = '✓ Activated';
+    setTimeout(goToMenu, 750);
+  } else if (result.reason === 'expired') {
+    triggerError('This key has expired.');
+  } else if (result.reason === 'revoked') {
+    triggerError('This key has been revoked.');
+  } else if (result.reason === 'network') {
+    triggerError(result.message);
+  } else {
+    triggerError();
+  }
+});
 
   function goToMenu(){
     const activateScreen = document.getElementById('activateScreen');
